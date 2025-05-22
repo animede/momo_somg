@@ -1,0 +1,267 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 20px;
+}
+h1, h2, h3 {
+  color: #333;
+}
+.content-wrapper {
+  max-width: 1920px;
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+#media-container {
+  margin-bottom: 1rem;
+  position: relative; /* <-- Add this line */
+}
+#media-container img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.overlay-container {
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+}
+.overlay-container img {
+  display: block;
+  width: 100%;
+  height: auto;
+  position: relative;
+  z-index: 0;
+}
+#pulse-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 60%;
+  height: 80%;
+  border: 4px solid rgba(255,255,255,0.6);
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(1);
+  pointer-events: none;
+  z-index: 1;
+}
+.overlay-text {
+  position: absolute;
+  top: 10%;
+  left: 5%;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 0.5rem;
+  max-width: 45%;
+  box-sizing: border-box;
+  overflow: auto;
+  text-align: center;
+  display: none;
+}
+.accordion {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0 auto;
+}
+.accordion-toggle {
+  display: none;
+}
+.accordion-label {
+  display: block;
+  cursor: pointer;
+  background: #f0f0f0;
+  padding: 0.5rem 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  user-select: none;
+  position: relative;
+}
+.accordion-label::before {
+  content: '▶︎';
+  display: inline-block;
+  margin-right: 0.5rem;
+  transition: transform 0.2s;
+}
+.accordion-toggle:checked + .accordion-label::before {
+  transform: rotate(90deg);
+}
+.accordion-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+  border-left: 1px solid #ccc;
+  border-right: 1px solid #ccc;
+  border-bottom: 1px solid #ccc;
+  padding: 0 1rem;
+  box-sizing: border-box;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+.accordion-toggle:checked + .accordion-label + .accordion-content {
+  max-height: 1000px;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+.accordion-content .form-item input[type="text"],
+.accordion-content .form-item textarea {
+  height: 2rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+/* 既存の .form-item ルールを上書き */
+.accordion-content .form-item {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 200px;    /* 最低でも200pxを確保 */
+  min-width: 200px;   /* ここで折り返し発生を保証 */
+}
+
+/* ── スライダー群にも折り返しを許可 ── */
+.slider-container {
+  display: flex;
+  flex-wrap: wrap;     /* 幅が足りなくなったら折り返す */
+  gap: 1rem;
+  box-sizing: border-box;
+}
+/* 各スライダー項目に最小幅を持たせる */
+.slider-container .slider-item {
+  flex: 1 1 150px;     /* flex-grow:1, flex-shrink:1, flex-basis:150px */
+  min-width: 150px;    /* これ以上小さくなると折り返し */
+  display: flex;
+  flex-direction: column;
+}
+/* スライダー本体は親幅いっぱいに */
+.slider-item input[type="range"] {
+  width: 100%;
+  box-sizing: border-box;
+}
+.slider-item {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.input-group {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+  box-sizing: border-box;
+  align-items: stretch;
+}
+.input-group textarea {
+  flex: 1;
+  resize: vertical;
+  min-width: 0;
+}
+.button-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+.button-row {
+  display: flex;
+  gap: 0.5rem;
+  height: 100%;
+  box-sizing: border-box;
+}
+/* 生成／戻るボタンをオリジナルのグリーンに */
+.button-row button#generate_btn,
+.button-row button#back_btn {
+  background-color: #28a745;   /* 緑 */
+  color: #fff;                 /* 白文字 */
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+/* ホバー時に少し濃く */
+.button-row button#generate_btn:hover,
+.button-row button#back_btn:hover {
+  background-color: #218838;
+}
+#generate_btn { width: 200px; }
+#back_btn     { width: 100px; }
+.status-text {
+  margin-top: 0.25rem;
+  font-size: 0.9rem;
+  color: #555;
+  min-height: 1em;
+  line-height: 1em;
+}
+.controls-wrapper {
+  display: flex;
+  flex-wrap: wrap;      /* 子要素が狭くなると折り返す */
+  align-items: flex-start;
+  gap: 1.5rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+.form-section {
+  flex: 1;
+  border: 1px solid #bbb;
+  border-radius: 4px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  min-width: 0;
+}
+.audio-container {
+  flex: 0 1 auto;
+  min-width: 50px;  
+}
+
+/* スピナー本体（最初は非表示） */
+#loading-spinner {
+  display: none;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 48px;
+  height: 48px;
+  margin: -24px 0 0 -24px;      /* 半分だけ上/左にずらして中央に */
+  border: 6px solid rgba(128,128,128,0.6);
+  border-top: 6px solid rgba(128,128,128,1);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  z-index: 3;                    /* テキストより前面に */
+}
+
+/* 回転アニメーション */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}/* スピナーと同じく overlay-container を基準に絶対配置 */
+
+#status {
+  position: absolute;
+  /* スピナーの中心から少し下に */
+  top: calc(55% + 32px);
+  left: 50%;
+  transform: translateX(-50%);
+  color: #fff;
+  font-size: 1rem;
+  text-shadow: 0 0 4px rgba(0,0,0,0.8);
+  z-index: 10;       /* スピナーより手前に */
+}
+
+#loading-text {
+  display: none;               /* JSで表示切替 */
+  width: 100%;
+  text-align: center;          /* 中央寄せ */
+  font-size: 1.5rem;           /* お好みで調整 */
+  color: #333;                 /* 背景に合わせて色を調整 */
+  margin: 1rem 0;              /* 上下の余白 */
+  animation: blink 1s step-end infinite;
+}
+
+/* 点滅アニメ */
+@keyframes blink {
+  0%,  49% { opacity: 1; }
+  50%,100% { opacity: 0; }
+}
+
+/* #generate_form を content-wrapper 幅いっぱいに */
+.content-wrapper > #generate_form {
+  width: 100%;
+  box-sizing: border-box; /* パディング込みで100% */
+  margin: 1rem auto 0;    /* 上マージンはお好みで */
+  padding: 0;             /* 必要なら調整 */
+}

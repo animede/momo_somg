@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <title>音楽生成</title>
+    <!-- 外部CSSを読み込む -->
+    <link rel="stylesheet" href="/static/style.css">
+  </head>
+
+  <body>
+
+    <div class="content-wrapper">
+      <!-- 動画と画像をラップするコンテナ -->
+      <div id="media-container">
+        <img
+          id="base_img"
+          src="/static/megu_song.png"
+          alt="背景画像"
+          style="width:100%; height:auto; display:block; margin-top:20px;"
+        />
+        <div id="loading-spinner"></div>
+        <div id="status" class="status-text"></div>
+        <!-- 生成後に切り替える画像 -->
+        <div class="overlay-container" style="position: relative;">
+          <img
+            id="image"
+            alt="Generated Image"
+            style="display:none; width:100%; height:auto;"
+          />
+          <!-- ここでリングを追加 -->
+          <div id="pulse-ring"></div>
+          <!-- ここで歌詞をオーバーラップ -->
+          <div class="overlay-text">
+            <pre id="result_title" style="font-size: 1.5rem; line-height:1.4;"></pre>
+            <br>
+            <pre id="lyrics"></pre>
+          </div> 
+          
+        </div> 
+      </div>
+      <div id="result" style="margin-top:10px">
+        <h3>音楽の解説</h3>
+        <p id="music_text" style="margin-top:-10px; font-size:1rem; color:#333;"></p>
+      </div>
+
+      <!-- 新：Flex コンテナでラップ -->
+      <div class="input-group">
+        <textarea
+            id="user_input"
+            name="user_input"
+            rows="4"
+            cols="50"
+            placeholder="ここに生成したい曲のイメージや指示を入力してください"
+          ></textarea>
+        <div class="button-wrapper" style="margin-top:0px">
+          <!-- ボタンを横並びにまとめる行 -->
+          <div class="button-row">
+            <button id="generate_btn">音楽生成</button>
+            <button id="back_btn">戻る</button>
+          </div>
+        </div>
+      </div>
+
+      <form id="generate_form" onsubmit="return false;" style="margin-top:10px">
+        <div class="controls-wrapper">
+          <div class="form-section">
+            <!-- アコーディオン本体 -->
+            <div class="accordion">
+              <!-- 開閉用チェックボックス（非表示） -->
+              <input type="checkbox" id="params_toggle" class="accordion-toggle" />
+              <!-- 押せる見出し -->
+              <label for="params_toggle" class="accordion-label">
+              生成パラメータ
+              </label>
+              <!-- 折りたたみ中身 -->
+              <div class="accordion-content">
+                <!-- テキスト入力群 -->
+                <div class="form-item">
+                  <label for="title">タイトル（任意）</label>
+                  <input type="text" id="title" name="title" placeholder="タイトルを入力">
+                </div>
+                <div class="form-item">
+                  <label for="genre">ジャンル（任意）</label>
+                  <input type="text" id="genre" name="genre" placeholder="例：ポップ、ジャズ">
+                </div>
+                <div class="form-item">
+                  <label for="mood">ムード（任意）</label>
+                  <input type="text" id="mood" name="mood" placeholder="例：明るい、落ち着いた">
+                </div>
+                <div class="form-item">
+                  <label for="instruments">楽器（任意）</label>
+                  <input type="text" id="instruments" name="instruments" placeholder="例：ギター、ピアノ">
+                </div>
+                <!-- スライダー群 -->
+                <div class="slider-container">
+                  <div class="slider-item">
+                    <label for="infer_step">infer_step</label>
+                    <input type="range" id="infer_step" name="infer_step"
+                      min="20" max="200" step="1" value="100"
+                      oninput="document.getElementById('infer_step_value').textContent = this.value" />
+                    <span id="infer_step_value">100</span>
+                  </div>
+                  <div class="slider-item">
+                    <label for="guidance_scale">guidance_scale</label>
+                    <input type="range" id="guidance_scale" name="guidance_scale"
+                      min="1" max="50" step="0.1" value="15"
+                      oninput="document.getElementById('guidance_scale_value').textContent = this.value" />
+                    <span id="guidance_scale_value">15.0</span>
+                  </div>
+                  <div class="slider-item">
+                    <label for="omega_scale">omega_scale</label>
+                    <input type="range" id="omega_scale" name="omega_scale"
+                      min="5" max="50" step="0.1" value="10"
+                      oninput="document.getElementById('omega_scale_value').textContent = this.value" />
+                    <span id="omega_scale_value">10</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div><!-- /.form-section -->
+          <!-- ② オーディオタグを右側に配置 -->
+          <div class="audio-container">
+            <!-- 音声再生用オーディオタグ -->
+            <audio id="audio_player" controls autoplay style="display: block; margin-top:10px; margin-left:-15px;">
+            お使いのブラウザはaudio要素に対応していません。
+            </audio>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <script>
+      const spinner     = document.getElementById('loading-spinner');
+      const generateBtn = document.getElementById('generate_btn');
+      const backBtn = document.getElementById('back_btn');
+      const resultDiv = document.getElementById('result');
+      const audioPlayer = document.getElementById('audio_player');
+      const videoPlayer  = document.getElementById('base_img');
+      const statusEl = document.getElementById('status');
+
+      // 初期状態：動画を表示、結果領域とオーディオは非表示
+      generateBtn.addEventListener('click', async () => {
+        // 生成中スピナーを表示
+        spinner.style.display = 'block';
+        statusEl.style.display = 'block';
+        updateStatus('作詞・曲データ作成中');
+
+        // Allow the browser to render the spinner before proceeding
+        await new Promise(resolve => setTimeout(resolve, 0));         
+
+        // 元のプロンプト取得
+        const basePrompt = document.getElementById('user_input').value.trim();
+        // 任意入力取得
+        const title       = document.getElementById('title').value.trim();
+        const genre       = document.getElementById('genre').value.trim();
+        const mood        = document.getElementById('mood').value.trim();
+        const instruments = document.getElementById('instruments').value.trim();
+        // ひとつの文字列にまとめる
+        let fullPrompt = basePrompt;
+        if (title)       fullPrompt += `\nタイトル: ${title}`;
+        if (genre)       fullPrompt += `\nジャンル: ${genre}`;
+        if (mood)        fullPrompt += `\nムード: ${mood}`;
+        if (instruments) fullPrompt += `\n楽器: ${instruments}`;
+
+        let lyrics_dict;
+        let music_world;
+        let data_music_world;
+        const formData0 = new FormData();
+        formData0.append('user_input', fullPrompt);
+        try {
+          const response = await fetch('/generate_lyrics', { method: 'POST', body: formData0 });
+        if (!response.ok) {
+            statusEl.textContent = `作詞・曲データ作成に失敗しました。言葉を変えて再度お試しください。`;
+            spinner.style.display = 'none';
+            return}
+          const data = await response.json();
+          data_music_world = JSON.stringify(data.music_world);
+          music_world = data.music_world.message;
+          console.log("data_music_world=", data_music_world);
+          lyrics_dict = JSON.stringify(data.lyrics_dict);
+        } catch (err) {
+          alert(err.message);
+          return;
+        }
+        console.log("lyrics_dict=", lyrics_dict);
+        console.log("music_world=", data_music_world);
+        // HTML に書き込む
+        const musicTextEl = document.getElementById('music_text');
+        musicTextEl.textContent = music_world;
+        updateStatus('作詞完了・作曲開始');
+
+        const formData = new FormData();
+        formData.append('lyrics_dict', lyrics_dict);
+        // --- スライダーの値をここで form に追加 ---
+        formData.append('infer_step', document.getElementById('infer_step').value);
+        formData.append('guidance_scale', document.getElementById('guidance_scale').value);
+        formData.append('omega_scale', document.getElementById('omega_scale').value);
+        formData.append('music_world', data_music_world);
+        try {
+          const response = await fetch('/generate_music', { method: 'POST', body: formData });
+          if (!response.ok) {
+            statusEl.textContent = `作曲に失敗しました。言葉を変えて再度お試しください。`;
+            spinner.style.display = 'none';
+            return}
+          const data = await response.json();
+          const lyrics_json_list = parseToList(data.lyrics_json);
+          const titleText = lyrics_json_list[0].value;
+          document.getElementById('result_title').textContent = titleText;
+          const sections = Object.values(lyrics_json_list[1].value);
+          const plainText = sections.join('\n\n');
+          // 結果をセットする前にスピナーを隠す
+          spinner.style.display = 'none';
+          statusEl.style.display = 'none';
+          // タイトルと歌詞を表示
+          document.getElementById('lyrics').textContent = plainText;
+          document.getElementById('image').src = data.image_base64;
+          document.getElementById('image').style.display = 'block';
+          document.querySelector('.overlay-text').style.display = 'block';
+          // audio_player に Base64 の音声をセット
+          audioPlayer.src = data.audio_base64;
+          audioPlayer.style.display = 'block';
+          // 【追加】生成前動画を隠す
+          videoPlayer.style.display = 'none';
+          resultDiv.style.display = 'block';
+          updateStatus('作曲終了…');
+        } catch (err) {
+          alert(err.message);
+          updateStatus('作曲が上手くできませんでした。言葉を変えて再度お試しください。');
+          spinner.style.display = 'none';
+        }
+      });
+
+      function parseToList(jsonStr) {
+        const obj = JSON.parse(jsonStr);
+        return Object.entries(obj).map(([key, value]) => ({
+          key,
+          value
+        }));
+      }
+
+      backBtn.addEventListener('click', () => {
+        // 結果領域、オーディオを隠す
+        resultDiv.style.display = 'none';
+        audioPlayer.style.display = 'none';
+        // 画像とオーバーレイテキストの取得とリセット
+        const imageElement = document.getElementById('image');
+        const overlayText = document.querySelector('.overlay-text');
+        if (imageElement) {
+          imageElement.style.display = 'none';
+          imageElement.src = '';
+        }
+        if (overlayText) {
+          overlayText.style.display = 'none';
+        }
+        // タイトルと歌詞のリセット
+        document.getElementById('result_title').textContent = '';
+        document.getElementById('lyrics').textContent = '';
+        // 動画を再表示
+        videoPlayer.style.display = 'block';
+      });
+
+      // ステータスを更新する関数
+      function updateStatus(msg) {
+        statusEl.textContent = `${msg}`;
+      }
+
+      const pulseRing = document.getElementById('pulse-ring');
+      let audioCtx, analyser, source, dataArray;
+      // 再生が始まったらオーディオコンテキストをセットアップ
+      audioPlayer.addEventListener('play', async () => {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          source = audioCtx.createMediaElementSource(audioPlayer);
+          analyser = audioCtx.createAnalyser();
+          analyser.fftSize = 256;
+          source.connect(analyser);
+          analyser.connect(audioCtx.destination);
+          dataArray = new Uint8Array(analyser.frequencyBinCount);
+        }
+        // 自動サスペンド対策
+        if (audioCtx.state === 'suspended') {
+          await audioCtx.resume();
+        }
+        // アニメーション開始
+        requestAnimationFrame(animatePulse);
+      });
+
+      // アニメーションループ
+      function animatePulse() {
+        if (audioPlayer.paused || audioPlayer.ended) {
+          pulseRing.style.transform = 'translate(-50%,-50%) scale(1)';
+          return;
+        }
+        analyser.getByteFrequencyData(dataArray);
+        const avg = dataArray.reduce((sum, value) => sum + value, 0) / dataArray.length;
+        const scale = 1 + (avg / 255) * 0.3;
+        pulseRing.style.transform = `translate(-50%,-50%) scale(${scale})`;
+        requestAnimationFrame(animatePulse);
+      }
+    </script>
+ 
+  </body>
+</html>
